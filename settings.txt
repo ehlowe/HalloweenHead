@@ -1,0 +1,9 @@
+accel, vel, deadzone, stop multiplier,exponent,accuracy,ycamoffset,xcamoffset
+22000
+1300
+5
+10.0
+1.5
+0.4
+60
+0
