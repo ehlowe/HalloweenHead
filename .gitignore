@@ -10,3 +10,5 @@ websocket_testing
 working_files/vision_description_image.jpg
 working_files/prompt.yaml
 working_files/shi_test
+AI_Cam_Speed_Test.py
+cam_tester.py

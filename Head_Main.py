@@ -48,9 +48,10 @@ def make_speech_file(shared_dict):
             if len(ct)>0:
                 print("CT -1:",ct[-1],"ct:",ct)
         ct_prev=ct
+        llm_finished=shared_dict["finished_llm"]
         if not shared_dict["tts_finished"]:
             shared_dict["tts_finished"]=False
-            if shared_dict["finished_llm"] or (((len(ct)-so_far)>20) and (time.time()-t_start)>time_diff):
+            if llm_finished or (((len(ct)-so_far)>20) and (time.time()-t_start)>time_diff):
                 #if (shared_dict["last_token_size"]>3) or shared_dict["finished_llm"]:
                 pause_index=len(ct)-1
                 while (pause_index>so_far) and (ct[pause_index] not in ending_marks):
@@ -63,30 +64,34 @@ def make_speech_file(shared_dict):
                 #     ct=shared_dict["text"].split("You: ")[-1].split("</s>")[0]
                 # tts = gTTS(ct[so_far:])
                 #so_far=len(ct)
-                llm_finished=shared_dict["finished_llm"]
-                ct=shared_dict["text"].split("You: ")[-1].split("</s>")[0]
-                print("GTTS PRINT: ",so_far,fi,": ",ct[so_far:pause_index], " Pause index: ",pause_index," Len ct: ",len(ct))
-                if shared_dict["finished_llm"] or pause_index==so_far:
-                    tts = gTTS(ct[so_far:])
-                    so_far=len(ct)
-                else:
-                    tts = gTTS(ct[so_far:pause_index])
-                    so_far=pause_index
-                
-                #Save tts
-                fi+=1
-                tts.save('working_files/tts_files/tts'+str(fi)+'.mp3')
-                shared_dict["file queue"]+=['working_files/tts_files/tts'+str(fi)+'.mp3']
 
-                t_start=time.time()
+                # llm_finished=shared_dict["finished_llm"]
+                # ct=shared_dict["text"].split("You: ")[-1].split("</s>")[0]
 
-                if llm_finished:
-                    print("Full: ",ct)
-                    shared_dict["tts_finished"]=True
-                    first_time=True
-                    so_far=0
-                    pause_index=0
-                    fi=0
+
+                if len(ct)>0:
+                    print("GTTS PRINT: ",so_far,fi,": ",ct[so_far:pause_index], " Pause index: ",pause_index," Len ct: ",len(ct))
+                    if shared_dict["finished_llm"]:
+                        tts = gTTS(ct[so_far:])
+                        so_far=len(ct)
+                    else:
+                        tts = gTTS(ct[so_far:pause_index])
+                        so_far=pause_index
+                    
+                    #Save tts
+                    fi+=1
+                    tts.save('working_files/tts_files/tts'+str(fi)+'.mp3')
+                    shared_dict["file queue"]+=['working_files/tts_files/tts'+str(fi)+'.mp3']
+
+                    t_start=time.time()
+
+                    if llm_finished:
+                        print("Full: ",ct)
+                        shared_dict["tts_finished"]=True
+                        first_time=True
+                        so_far=0
+                        pause_index=0
+                        fi=0
 
         time.sleep(0.01)
 
@@ -132,6 +137,7 @@ def play_from_queue(shared_dict):
         if shared_dict["tts_finished"]:
             if len(shared_dict["file queue"])==0:
                 if not mic_active:
+                    shared_dict["text"]=""
                     shared_dict["eyeV"]=0
                     time.sleep(0.5)
                     shared_dict["eyeV"]=1
@@ -654,7 +660,7 @@ def description_task(shared_dict):
         im=cv2.imread("working_files/shi.jpg")
         initial_size = os.path.getsize("working_files/shi.jpg")
         time.sleep(0.01)
-        if os.path.getsize("working_files/shi.jpg") == initial_size:
+        if (os.path.getsize("working_files/shi.jpg") == initial_size) and (initial_size>300):
             cv2.imwrite("working_files/vision_description_image.jpg",im)
             break
 
@@ -694,7 +700,7 @@ if __name__ == "__main__":
 
     # Setup together LLM
     model_name="togethercomputer/llama-2-13b-chat"
-    model_name="togethercomputer/llama-2-70b-chat"
+    together_model_name="togethercomputer/llama-2-70b-chat"
     import together
     together.api_key = TOGETHER_SECRET
 
@@ -776,15 +782,43 @@ if __name__ == "__main__":
 
     t_failed_start=time.time()
 
+    ran_vision_description=False
+
+    openai_bool=False
+    together_bool=True
+    if openai_bool:
+        together_bool=False
+    if together_bool:
+        openai_bool=False
+
+    def get_openai_response(the_prompt):
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {'role': 'user', 'content': the_prompt}
+                ],
+                temperature=0.4,
+                max_tokens=500,
+                stream=True
+            )
+            return response
+        except Exception as e:
+            print(f"An exception occurred: {e}")
+            return None
+    
+
     while recording_thread.is_alive():
         time.sleep(0.05)
 
         if shared_motion["approaching"]:
             approaching_to_door=True
 
-        if approaching_to_door and not prev_approaching_to_door:
-            description_thread=threading.Thread(target=description_task, args=(shared_dict,))
-            description_thread.start()
+        if not ran_vision_description:
+            if (time.time()-t_failed_start)>0.4:
+                description_thread=threading.Thread(target=description_task, args=(shared_dict,))
+                description_thread.start()
+                ran_vision_description=True
         
         prev_approaching_to_door=approaching_to_door
 
@@ -799,27 +833,32 @@ if __name__ == "__main__":
                 shared_dict["savebool"]=True
                 chat_log=""
                 t_failed_start=time.time()
+                ran_vision_description=False
         else:
             t_failed_start=time.time()
 
         if keyboard.is_pressed('r'):
             approach_ready=True
             print("\nAPPROACH READY ON\n")
-        if keyboard.is_pressed('c'):
-            off_bool=True
-        if keyboard.is_pressed('v'):
-            off_bool=False
+        # if keyboard.is_pressed('c'):
+        #     off_bool=True
+        # if keyboard.is_pressed('v'):
+        #     off_bool=False
 
         if time.time()-t_print>1:
             print("Failed: ", shared_motion['failed'], "Approaching: ", shared_motion["approaching"], "At Door: ", shared_motion["at_door"], "Approach Ready: ", approach_ready," Approaching to door: ", approaching_to_door)
             t_print=time.time()
 
-        if off_bool:
-            shared_dict["text"]=""
-            shared_dict["savebool"]=False
+        # if off_bool:
+        #     shared_dict["text"]=""
+        #     shared_dict["savebool"]=False
 
         #if recording thread has saved audio, do this
         if shared_dict["savebool"] and approach_ready and not off_bool:
+            if not ran_vision_description:
+                description_thread=threading.Thread(target=description_task, args=(shared_dict,))
+                description_thread.start()
+                ran_vision_description=True
             shared_dict["playingsound"]=True
             path_i+=1
             shared_dict["savebool"]=False
@@ -859,7 +898,11 @@ Rules:
 Description of what you see right now: \""""+shared_dict["visual_description"]+".\""
                     the_prompt=chat_log+"\n\nYou: <message>\n\nWhat do you want to say for the <message> to the user to which will start the conversation? This can be something funny, a comment on the appearance of the people at the door or a introductory statement, ex: \"Trick or treat, smell my feet. I hope you didn't forget any candy because I'm dying for a sugar rush!\". Provide a witty, humorous greeting or comment to the children. Your answer will be used as <message>."
                     chat_log="Imagine you are a witty and humorous character inside a spooky skeleton head, greeting trick-or-treaters on Halloween night at the front door of a house. This is what you see in front of you: "+shared_dict["visual_description"]+". Respond with a single, concise message starting with 'You:'. No emojis. Provide a witty, humorous introduction to the user, be sure to make it very short and to the point with very little fluff ie: not starting with well, well, well. Your answer will be used as <message>."
-                    the_prompt="Imagine you are a witty and humorous character inside a spooky skeleton head, greeting trick-or-treaters on Halloween night at the front door of a house. This is what you see in front of you: "+shared_dict["visual_description"]+". Respond with a single, concise message starting with 'You:'. No emojis. Provide a witty, humorous introduction to the user, be sure to make it very short and to the point with very little fluff ie: not starting with well, well, well. Your answer will be used as <message>."
+                    #the_prompt="Imagine you are a witty and humorous character inside a spooky skeleton head, greeting trick-or-treaters on Halloween night at the front door of a house. This is what you see in front of you: "+shared_dict["visual_description"]+". Respond with a single, concise message starting with 'You:'. Provide a witty, humorous introduction to the user, be sure to make it short and to the point with very little fluff ie: not starting with well, well, well. Do not be inappropriate. Also be sure to keep the conversation up and make it easy for the user to respond. Your answer will be used as <message>."
+                    #the_prompt="I want you to role play as a talking skeleton head who is whitty and funny. You are greeting trick-or-treaters on Halloween night at the front door of a house. I want this conversation to be engauging for the trick or treaters so make sure to respond in a way that keeps a path for conversation open. This is what you see in front of you: "+shared_dict["visual_description"]
+                    the_prompt="I want you to role play as a talking skeleton head who is whitty and funny. You are greeting trick-or-treaters on Halloween night at the front door of a house. I want this conversation to be engauging for the trick or treaters and for it to be funny. Try to be a little crazy and try not to repeat yourself or say things that are repetitive and don't ramble on for a long time because this is a back and forth conversation. This is what you see in front of you: "+shared_dict["visual_description"]
+                    chat_log=the_prompt
+                    the_prompt+="\nYou: <message>\n\nWhat should you say for the <message> to the user?\nAnswer: "
                 else:
                     chat_log=chat_log+"\nUser: "+str(transcript["text"])
                     the_prompt=chat_log+"\nYou: <message>\n\nWhat should you say for the <message> to the user?\nAnswer: "
@@ -882,54 +925,41 @@ Description of what you see right now: \""""+shared_dict["visual_description"]+"
                 shared_dict["tts_finished"]=False
                 shared_dict["text"]=""
 
-                def get_openai_response(the_prompt):
-                    try:
-                        response = openai.ChatCompletion.create(
-                            model="gpt-4",
-                            messages=[
-                                {'role': 'user', 'content': the_prompt}
-                            ],
-                            temperature=0.9,
-                            max_tokens=200,
-                            stream=True
-                        )
-                        return response
-                    except Exception as e:
-                        print(f"An exception occurred: {e}")
-                        return None
                 timeout_seconds = 2
                 response=None
-                while response==None:
-                    with ThreadPoolExecutor(max_workers=1) as executor:
-                        future = executor.submit(get_openai_response, the_prompt)
+                if openai_bool:
+                    while response==None:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(get_openai_response, the_prompt)
+                            try:
+                                response = future.result(timeout=timeout_seconds)
+                            except TimeoutError:
+                                print(f"Timeout after {timeout_seconds} seconds")
+                                response = None
+
+                    print("MADE RESPONSE")
+                    collected_messages=[]
+                    for chunk in response:
                         try:
-                            response = future.result(timeout=timeout_seconds)
-                        except TimeoutError:
-                            print(f"Timeout after {timeout_seconds} seconds")
-                            response = None
+                            shared_dict["last_token_size"]=len(chunk['choices'][0]['delta']["content"])
+                            print(chunk['choices'][0]['delta']["content"])
+                            collected_messages.append(chunk['choices'][0]['delta']["content"])
+                            shared_dict["text"]="".join(collected_messages)
+                        except Exception as e:
+                            print(e)
+                    result_s="".join(collected_messages)
 
-                print("MADE RESPONSE")
 
-                collected_messages=[]
-                for chunk in response:
-                    try:
-                        shared_dict["last_token_size"]=len(chunk['choices'][0]['delta']["content"])
-                        print(chunk['choices'][0]['delta']["content"])
-                        collected_messages.append(chunk['choices'][0]['delta']["content"])
-                        shared_dict["text"]="".join(collected_messages)
-                    except Exception as e:
-                        print(e)
-                result_s="".join(collected_messages)
+                if together_bool:
+                    # Together llamma response:
+                    for token in together.Complete.create_streaming(prompt=the_prompt,model=together_model_name,max_tokens=500,temperature=0.9):
+                        print(token, end="", flush=True)
+                        shared_dict["last_token_size"]=len(token)
+                        result_l.append(token)
+                        result_s="".join(result_l).strip()
+                        shared_dict["text"]=result_s
+
                 print("LLM RESULT: ",result_s)
-
-                #Together llamma response:
-                # for token in together.Complete.create_streaming(prompt=the_prompt,model=model_name,max_tokens=200,temperature=0.6):
-                #     print(token, end="", flush=True)
-                #     shared_dict["last_token_size"]=len(token)
-                #     result_l.append(token)
-                #     result_s="".join(result_l).strip()
-                #     shared_dict["text"]=result_s
-
 
                 shared_dict["finished_llm"]=True
                 chat_log=chat_log+"\nYou: "+result_s.split("You: ")[-1].split("</s>")[0]
