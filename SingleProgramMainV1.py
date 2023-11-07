@@ -5,6 +5,7 @@ import time
 import cv2
 import ultralytics
 import multiprocessing
+import socket
 
 #conversation
 import threading
@@ -46,8 +47,8 @@ def make_speech_file(shared_dict):
                     first_time=False
                     tts = gTTS(ct[so_far:])
                     fi+=1
-                    tts.save('tts'+str(fi)+'.mp3')
-                    shared_dict["file queue"]+=['tts'+str(fi)+'.mp3']
+                    tts.save('working_files/tts_files/tts'+str(fi)+'.mp3')
+                    shared_dict["file queue"]+=['working_files/tts_files/tts'+str(fi)+'.mp3']
 
                     print(so_far,fi,": ",ct[so_far:])
 
@@ -68,12 +69,6 @@ def play_from_queue(shared_dict):
     import pygame
     import time
     pygame.init()
-
-    #create pygame window
-    #screen = pygame.display.set_mode((640,480))
-
-    #set window caption
-    #pygame.display.set_caption("Text to Speech")
 
     mic_active=True
 
@@ -324,7 +319,7 @@ def main_motion(shared_motion):
     servo_process = multiprocessing.Process(target=servo_handling, args=(shared_motion,))
     servo_process.start()
 
-    model = torch.hub.load("ultralytics/yolov5", 'custom', path="crowdhuman_yolov5m.pt")
+    model = torch.hub.load("ultralytics/yolov5", 'custom', path="working_files/crowdhuman_yolov5m.pt")
     #model=yolov5.load("crowdhuman_yolov5m.pt")
     cam=cv2.VideoCapture(1)
     
@@ -342,7 +337,7 @@ def main_motion(shared_motion):
             ret,frame=cam.read()
             #show frame
             cv2.imshow("frame",frame)
-            cv2.imwrite("shi.jpg",frame)
+            cv2.imwrite("working_files/shi.jpg",frame)
             
             cv2.waitKey(1)
             #hide output of model inference
@@ -446,7 +441,7 @@ def servo_handling(shared_motion):
     #servo loop
     while True:
         if (time.time()-t_settings)>5:
-            with open("settings.txt","r") as f:
+            with open("working_files/settings.txt","r") as f:
                 settings=f.read().split("\n")[1:]
                 MAX_ACCEL=int(settings[0])
                 MAX_VELOCITY=int(settings[1])
@@ -658,7 +653,7 @@ def servo_handling(shared_motion):
 def description_task(shared_dict):
     vision_output = replicate.run(
         "yorickvp/llava-13b:2facb4a474a0462c15041b78b1ad70952ea46b5ec6ad29583c0b29dbd4249591",
-        input={"image": open("shi.jpg", "rb"),"prompt":"In this image is: "}
+        input={"image": open("working_files/shi.jpg", "rb"),"prompt":"In this image is: "}
     )
     description_string=""
     for item in vision_output:
@@ -669,15 +664,17 @@ def description_task(shared_dict):
 
 
 if __name__ == "__main__":
+    if not os.path.isdir("working_files/audio_files"):
+        os.mkdir("working_files/audio_files")
+    if not os.path.isdir("working_files/tts_files"):
+        os.mkdir("working_files/tts_files")
+
     #create thread for motion
     import threading
     import keyboard
 
-    # Text to speech
-    from gtts import gTTS
-
     # Read all keys
-    with open("SECRET.txt",'r') as f:
+    with open("working_files/SECRET.txt",'r') as f:
         list_of_keys=f.read().split("\n")
         OPENAI_SECRET=list_of_keys[0]
         TOGETHER_SECRET=list_of_keys[1]
@@ -817,7 +814,7 @@ if __name__ == "__main__":
         if shared_dict["savebool"] and approach_ready and not off_bool:
             path_i+=1
             shared_dict["savebool"]=False
-            save_audio(shared_dict["audio"],shared_dict["saveduration"],"audiofiles/"+str(path_i)+".wav")
+            save_audio(shared_dict["audio"],shared_dict["saveduration"],"working_files/audio_files/"+str(path_i)+".wav")
             print(shared_dict["saveduration"]," Saving audio ", path_i)
 
             #stop listening
@@ -830,7 +827,7 @@ if __name__ == "__main__":
                 t_start=time.time()
                 if chat_log!="":
                     shared_dict["eyeV"]=2
-                    audio_file= open("audiofiles/"+str(path_i)+".wav", "rb")
+                    audio_file= open("working_files/audio_files/"+str(path_i)+".wav", "rb")
                     try:
                         transcript = openai.Audio.transcribe("whisper-1", audio_file)
                     except:
