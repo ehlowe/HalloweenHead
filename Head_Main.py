@@ -304,7 +304,10 @@ def main_arduino(shared_motion,shared_dict):
     time.sleep(3)
     t_var=time.time()
     line=""
+    print("arduino on")
+    t_start=time.time()
     while True:
+        t_start=time.time()
         mouthV=shared_dict["mouthV"]
         eyeV=shared_dict["eyeV"]
         x_pos_write=shared_motion["x_pos_write"]
@@ -337,6 +340,7 @@ def main_arduino(shared_motion,shared_dict):
             except:
                 print("error")
                 pass
+        print("arduino: ",1/(time.time()-t_start))
 
 
 
@@ -403,8 +407,11 @@ def servo_handling(shared_motion):
     failed=shared_motion["failed"]
 
     x_pos_write=1500
-    y_pos_write=1500
+    x_pos_write_prev=1500
+    x_test_vel=0
     x_old_write_pos=x_pos_write
+
+    y_pos_write=1500
     y_old_write_pos=y_pos_write
 
 
@@ -413,7 +420,7 @@ def servo_handling(shared_motion):
 
     ACC_DEC=0.1
 
-    LOOP_T=0.05
+    LOOP_T=0.03
     MAX_ACCEL*=LOOP_T**2
     MAX_VELOCITY*=LOOP_T
     stop_multiplier=2
@@ -442,8 +449,13 @@ def servo_handling(shared_motion):
     failed_3=True
     failed_3_counter=0
 
+    t_print=time.time()
+
     #servo loop
     while True:
+        if (time.time()-t_print)>0.5:
+            print("CONTROLS: ",((person_x_vel-x_test_vel)*LOOP_T),person_x_vel,x_test_vel,x_pos_write,x_pos)
+            t_print=time.time()
         if (time.time()-t_settings)>5:
             with open("working_files/settings.txt","r") as f:
                 settings=f.read().split("\n")[1:]
@@ -473,7 +485,7 @@ def servo_handling(shared_motion):
 
 
         if x_pos!=x_pos_prev:
-            person_x_vel=int(x_pos-x_pos_prev)*17
+            person_x_vel=((x_pos-x_pos_prev)/(LOOP_T*1.76))*0.5+0.5*person_x_vel
         if y_pos!=y_pos_prev:
             person_y_vel=int(y_pos-y_pos_prev)*17
 
@@ -492,7 +504,6 @@ def servo_handling(shared_motion):
             failed_3=True
 
         
-
         #pid to get velocity and change the x_pos_write and y_pos_write
         if not failed_3:
             #x axis
@@ -528,7 +539,18 @@ def servo_handling(shared_motion):
                 x_velocity=MAX_VELOCITY
             elif x_velocity<-MAX_VELOCITY:
                 x_velocity=-MAX_VELOCITY
-            x_pos_write-=x_velocity
+
+
+            #add player speed:
+
+
+            # Old pixel diff method
+            #x_pos_write-=x_velocity
+
+            x_pos_write=(x_pos_write-((abs(x_pos)**exponent_var)*x_dir_val*1.76*LOOP_T*1.05))#-((person_x_vel-x_test_vel)*LOOP_T*0.15)
+            x_test_vel=(((x_pos_write-x_pos_write_prev)/LOOP_T)*0.5)+0.5*x_test_vel
+            x_pos_write_prev=x_pos_write
+            #person_x_vel
 
 
 
@@ -753,7 +775,7 @@ if __name__ == "__main__":
         print("arduino on")
 
 
-    being_smart=True
+    being_smart=False
 
     #start threads
     recording_thread = threading.Thread(target=record_audio, args=(shared_dict,))
@@ -817,7 +839,7 @@ if __name__ == "__main__":
         if not ran_vision_description:
             if (time.time()-t_failed_start)>0.4:
                 description_thread=threading.Thread(target=description_task, args=(shared_dict,))
-                description_thread.start()
+                #description_thread.start()
                 ran_vision_description=True
         
         prev_approaching_to_door=approaching_to_door
