@@ -37,7 +37,7 @@ def camera(shared_dict):
 def arduino_controls(shared_dict):
     # Setup serial connection to arduino
     import serial
-    ser = serial.Serial('COM6', 115200)
+    ser = serial.Serial('COM3', 115200)
     ser.timeout=5
     time.sleep(1.5)
 

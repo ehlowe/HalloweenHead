@@ -8,6 +8,7 @@ import socket
 import threading
 import os
 import openai
+from openai import OpenAI
 import time
 from pvrecorder import PvRecorder
 import wave
@@ -411,6 +412,7 @@ if __name__ == "__main__":
     #create thread for motion
     import threading
     import keyboard
+    import cv2
 
     # Read all keys
     with open("working_files/SECRET.txt",'r') as f:
@@ -507,12 +509,34 @@ if __name__ == "__main__":
     if together_bool:
         openai_bool=False
 
+    import base64
+    import os
+
+
+
+    def encode_image(image_path):
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+
     def get_openai_response(the_prompt):
+        client = OpenAI()
+        image_path="working_files/vision_description_image.jpg"
+        while True:
+            im=cv2.imread("working_files/shi.jpg")
+            initial_size = os.path.getsize("working_files/shi.jpg")
+            time.sleep(0.01)
+            if (os.path.getsize("working_files/shi.jpg") == initial_size) and (initial_size>300):
+                cv2.imwrite(image_path,im)
+                break
+
+        base64_image = encode_image(image_path)
+        image_url=f"data:image/jpeg;base64,{base64_image}"
+
         try:
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
+            response = client.chat.completions.create(
+                model="gpt-4-vision-preview",
                 messages=[
-                    {'role': 'user', 'content': the_prompt}
+                    {'role': 'user', 'content': [{"type": "text", "text":the_prompt},{"type": "image", "image": image_url},],}
                 ],
                 temperature=0.4,
                 max_tokens=500,
@@ -689,8 +713,4 @@ Description of what you see right now: \""""+shared_dict["visual_description"]+"
 
                 print("LLM Time: ",time.time()-ts)
 
-
-    recording_thread.join()
-    sound_thread.join()
-    gtts_thread.join()
     print("Done")

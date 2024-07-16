@@ -8,9 +8,12 @@ working_files/tts_files
 freq_plot_testing
 websocket_testing
 working_files/vision_description_image.jpg
+working_files/vision_description_image.jpeg
+working_files/vision_description_image.png
 working_files/prompt.yaml
 working_files/shi_test
 AI_Cam_Speed_Test.py
 cam_tester.py
 Camera_AI copy.py
 __pycache__
+working_files/pfp.jpg
