@@ -1,5 +1,8 @@
 env
 SECRET.txt
+
+old_code
+
 working_files/SECRET.txt
 working_files/crowdhuman_yolov5m.pt
 working_files/shi.jpg

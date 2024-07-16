@@ -17,7 +17,7 @@ import numpy as np
 
 
 # Import the functions for conversation
-import CustomImports as hh
+import customlibrary.HalloweenHead as hh
 
 
 # Socket connection
@@ -90,293 +90,6 @@ def socket_connection(shared_dict):
                 conn_obj, addr = s.accept()
             except:
                 print("Tried to reconnect, but failed")
-
-
-
-# def servo_handling(shared_motion):
-    
-#     #ser = serial.Serial('COM6', 2400)  # replace 'COM3' with the port where your Arduino is connected
-#     time.sleep(0.1)  # wait for the serial connection to initialize
-
-#     while shared_motion["x_pos"] == None:
-#         time.sleep(0.1)
-#     print("Servo process started")
-
-
-#     x_pos=shared_motion["x_pos"]
-#     y_pos=shared_motion["y_pos"]
-#     failed=shared_motion["failed"]
-
-#     x_pos_write=1500
-#     x_pos_write_prev=1500
-#     x_test_vel=0
-#     x_old_write_pos=x_pos_write
-
-#     y_pos_write=1500
-#     y_old_write_pos=y_pos_write
-
-
-#     MAX_ACCEL=6000
-#     MAX_VELOCITY=1000
-
-#     ACC_DEC=0.1
-
-#     LOOP_T=0.03
-#     MAX_ACCEL*=LOOP_T**2
-#     MAX_VELOCITY*=LOOP_T
-#     stop_multiplier=2
-
-#     exponent_var=2
-
-#     x_velocity=0
-#     y_velocity=0
-#     x_accel=0
-#     y_accel=0
-#     deadzone=30
-
-
-#     x_dir_val=0
-#     y_dir_val=0
-
-
-#     person_x_vel=0
-#     person_y_vel=0
-
-#     failed_times=0
-#     t_settings=time.time()
-
-#     panning_dir=1
-
-#     failed_3=True
-#     failed_3_counter=0
-
-#     t_print=time.time()
-
-#     #servo loop
-#     while True:
-#         if (time.time()-t_print)>0.5:
-#             print("CONTROLS: ",((person_x_vel-x_test_vel)*LOOP_T),person_x_vel,x_test_vel,x_pos_write,x_pos)
-#             t_print=time.time()
-#         if (time.time()-t_settings)>5:
-#             with open("working_files/settings.txt","r") as f:
-#                 settings=f.read().split("\n")[1:]
-#                 MAX_ACCEL=int(settings[0])
-#                 MAX_VELOCITY=int(settings[1])
-#                 MAX_ACCEL*=LOOP_T**2
-#                 MAX_VELOCITY*=LOOP_T
-#                 deadzone=int(settings[2])
-#                 stop_multiplier=float(settings[3])
-#                 exponent_var=float(settings[4])
-#                 shared_motion["acc_threshold"]=float(settings[5])
-#                 shared_motion["y_cam_offset"]=int(settings[6])
-#                 shared_motion["x_cam_offset"]=int(settings[7])
-
-#             t_settings=time.time()
-#             print("Settings updated",MAX_ACCEL,MAX_VELOCITY,deadzone)
-
-#         loop_t=time.time()
-
-#         x_pos_prev=x_pos
-#         y_pos_prev=y_pos
-
-#         #get data from main loop
-#         failed=shared_motion["failed"]
-#         x_pos=shared_motion["x_pos"]
-#         y_pos=shared_motion["y_pos"]
-
-
-#         if x_pos!=x_pos_prev:
-#             person_x_vel=((x_pos-x_pos_prev)/(LOOP_T*1.76))*0.5+0.5*person_x_vel
-#         if y_pos!=y_pos_prev:
-#             person_y_vel=int(y_pos-y_pos_prev)*17
-
-
-
-
-#         # get old_write positions
-#         if not failed:
-#             x_old_write_pos=x_pos_write
-#             y_old_write_pos=y_pos_write
-#             failed_3_counter+=1
-#             if failed_3_counter>2:
-#                 failed_3=False
-#         else:
-#             failed_3_counter=0
-#             failed_3=True
-
-        
-#         #pid to get velocity and change the x_pos_write and y_pos_write
-#         if not failed_3:
-#             #x axis
-#             prev_x_velocity=x_velocity
-
-#             #get the sign of the x_pos
-#             if x_pos>0:
-#                 x_dir_val=1
-#             elif x_pos<0:
-#                 x_dir_val=-1
-
-#             x_velocity=((abs(x_pos)/320)**exponent_var)*MAX_VELOCITY*x_dir_val
-#             if abs(x_pos)<deadzone:
-#                 x_velocity=0
-            
-#             x_accel=x_velocity-prev_x_velocity
-#             if abs(x_velocity)>abs(prev_x_velocity):
-#                 if x_accel>MAX_ACCEL:
-#                     x_accel=MAX_ACCEL
-#                     x_velocity=x_accel+prev_x_velocity
-#                 elif x_accel<-MAX_ACCEL:
-#                     x_accel=-MAX_ACCEL
-#                     x_velocity=x_accel+prev_x_velocity
-#             else:
-#                 if x_accel>MAX_ACCEL*stop_multiplier:
-#                     x_accel=MAX_ACCEL*stop_multiplier
-#                     x_velocity=x_accel+prev_x_velocity
-#                 elif x_accel<-MAX_ACCEL*stop_multiplier:
-#                     x_accel=-MAX_ACCEL*stop_multiplier
-#                     x_velocity=x_accel+prev_x_velocity
-
-#             if x_velocity>MAX_VELOCITY:
-#                 x_velocity=MAX_VELOCITY
-#             elif x_velocity<-MAX_VELOCITY:
-#                 x_velocity=-MAX_VELOCITY
-
-
-#             #add player speed:
-
-
-#             # Old pixel diff method
-#             #x_pos_write-=x_velocity
-
-#             x_pos_write=(x_pos_write-((abs(x_pos)**exponent_var)*x_dir_val*1.76*LOOP_T*1.05))#-((person_x_vel-x_test_vel)*LOOP_T*0.15)
-#             x_test_vel=(((x_pos_write-x_pos_write_prev)/LOOP_T)*0.5)+0.5*x_test_vel
-#             x_pos_write_prev=x_pos_write
-#             #person_x_vel
-
-
-
-#             #y axis
-#             prev_y_velocity=y_velocity
-
-#             #get the sign of the y_pos
-#             if y_pos>0:
-#                 y_dir_val=-1
-#             elif y_pos<0:
-#                 y_dir_val=1
-            
-#             y_velocity=((abs(y_pos)/240)**exponent_var)*MAX_VELOCITY*y_dir_val
-#             if abs(y_pos)<deadzone:
-#                 y_velocity=0
-            
-#             y_accel=y_velocity-prev_y_velocity
-
-#             if abs(y_velocity)>abs(prev_y_velocity):
-#                 if y_accel>MAX_ACCEL:
-#                     y_accel=MAX_ACCEL
-#                     y_velocity=y_accel+prev_y_velocity
-#                 elif y_accel<-MAX_ACCEL:
-#                     y_accel=-MAX_ACCEL
-#                     y_velocity=y_accel+prev_y_velocity
-#             else:
-#                 if y_accel>MAX_ACCEL*2:
-#                     y_accel=MAX_ACCEL*2
-#                     y_velocity=y_accel+prev_y_velocity
-#                 elif y_accel<-MAX_ACCEL*2:
-#                     y_accel=-MAX_ACCEL*2
-#                     y_velocity=y_accel+prev_y_velocity
-            
-#             if y_velocity>MAX_VELOCITY:
-#                 y_velocity=MAX_VELOCITY
-#             elif y_velocity<-MAX_VELOCITY:
-#                 y_velocity=-MAX_VELOCITY
-#             y_pos_write+=y_velocity
-
-#             failed_times=0
-#         else:
-#             failed_times+=1
-#             if failed_times>5:
-#                 x_add=person_x_vel*2
-#                 if x_add>200:
-#                     x_add=200
-#                 elif x_add<-200:
-#                     x_add=-200
-                
-#                 y_add=person_y_vel*2
-#                 if y_add>200:
-#                     y_add=200
-#                 elif y_add<-200:
-#                     y_add=-200
-
-
-#                 if failed_times<50:
-#                     x_pos_write-=x_add/50
-#                     y_pos_write+=y_add/50
-
-#                 if (failed_times>70)and(failed_times<120):
-#                     x_pos_write+=x_add/50
-#                     y_pos_write-=y_add/50
-                
-#                 if failed_times==120:
-#                     x_pos_write=1500
-#                     y_pos_write=1500
-#                 if failed_times>120 and failed_times<300:
-#                     if x_pos_write>=2200:
-#                         panning_dir=-1
-#                     elif x_pos_write<=1300:
-#                         panning_dir=1
-#                     x_pos_write+=panning_dir*MAX_VELOCITY/7
-#                     if panning_dir==1:
-#                         y_pos_write=2200-(x_pos_write/2)#1100
-#                     else:
-#                         y_pos_write=2300-(x_pos_write/3)
-#                 elif failed_times>=300:
-#                     y_pos_write=1600
-#                     x_pos_write=1900
-
-#         if not failed:
-#             if x_pos_write>1500:
-#                 shared_motion["approaching"]=True
-#                 shared_motion["at_door"]=False
-#             else:
-#                 shared_motion["approaching"]=False
-#                 shared_motion["at_door"]=True
-#         elif (failed_times)>10:
-#             shared_motion["approaching"]=False
-#             shared_motion["at_door"]=False
-
-
-#         # Set bounds
-#         if x_pos_write<700:
-#             x_pos_write=700
-#         elif x_pos_write>2300:
-#             x_pos_write=2300
-
-#         if y_pos_write<700:
-#             y_pos_write=700
-#         elif y_pos_write>2400:
-#             y_pos_write=2400
-
-
-
-#         # Send the position to the Arduino
-#         # if not failed:
-#         #     command = f"{str(int(x_pos_write))},{str(int(y_pos_write))}\n"
-#         # else:
-#         #     command = f"{str(int(x_old_write_pos))},{str(int(y_old_write_pos))}\n"
-#         command = f"{str(int(x_pos_write))},{str(int(y_pos_write))}\n"
-#         #ser.write(command.encode('utf-8'))
-#         shared_motion["x_pos_write"]=x_pos_write
-#         shared_motion["y_pos_write"]=y_pos_write
-
-#         #sleep to keep loop time constant
-#         loop_d=(time.time()-loop_t)
-#         if loop_d<LOOP_T:
-#             time.sleep(LOOP_T-loop_d)        
-#         fps=int(1/(time.time()-loop_t))
-#         #print("  ",command.split("\n")[0],"  ",fps,"  ",x_velocity,x_accel,failed,"  ",person_y_vel,"  ",person_x_vel,"   ",failed_times," ",failed_3)#,end="\r")
-
-
-
 
 
 # Vision Description
@@ -629,17 +342,6 @@ if __name__ == "__main__":
                 ts=time.time()
                 # generate response
                 if chat_log=="":
-                    chat_log="""You are in a spooky skeleton head on halloween night being witty and humorous at the front door of a house while keeping what you say short. Make sure to make the convesation go back and forth.
-Rules:
-    Your response will be 1 message only which is 'You: <message>'.
-    Your response should be short and concise unless the context calls for a longer response.
-    You do not use emojis in your response.
-
-Description of what you see right now: \""""+shared_dict["visual_description"]+".\""
-                    the_prompt=chat_log+"\n\nYou: <message>\n\nWhat do you want to say for the <message> to the user to which will start the conversation? This can be something funny, a comment on the appearance of the people at the door or a introductory statement, ex: \"Trick or treat, smell my feet. I hope you didn't forget any candy because I'm dying for a sugar rush!\". Provide a witty, humorous greeting or comment to the children. Your answer will be used as <message>."
-                    chat_log="Imagine you are a witty and humorous character inside a spooky skeleton head, greeting trick-or-treaters on Halloween night at the front door of a house. This is what you see in front of you: "+shared_dict["visual_description"]+". Respond with a single, concise message starting with 'You:'. No emojis. Provide a witty, humorous introduction to the user, be sure to make it very short and to the point with very little fluff ie: not starting with well, well, well. Your answer will be used as <message>."
-                    #the_prompt="Imagine you are a witty and humorous character inside a spooky skeleton head, greeting trick-or-treaters on Halloween night at the front door of a house. This is what you see in front of you: "+shared_dict["visual_description"]+". Respond with a single, concise message starting with 'You:'. Provide a witty, humorous introduction to the user, be sure to make it short and to the point with very little fluff ie: not starting with well, well, well. Do not be inappropriate. Also be sure to keep the conversation up and make it easy for the user to respond. Your answer will be used as <message>."
-                    #the_prompt="I want you to role play as a talking skeleton head who is whitty and funny. You are greeting trick-or-treaters on Halloween night at the front door of a house. I want this conversation to be engauging for the trick or treaters so make sure to respond in a way that keeps a path for conversation open. This is what you see in front of you: "+shared_dict["visual_description"]
                     the_prompt="I want you to role play as a talking skeleton head who is whitty and funny. You are greeting trick-or-treaters on Halloween night at the front door of a house. I want this conversation to be engauging for the trick or treaters and for it to be funny. Try to be a little crazy and try not to repeat yourself or say things that are repetitive and don't ramble on for a long time because this is a back and forth conversation. This is what you see in front of you: "+shared_dict["visual_description"]
                     chat_log=the_prompt
                     the_prompt+="\nYou: <message>\n\nWhat should you say for the <message> to the user?\nAnswer: "
@@ -698,7 +400,6 @@ Description of what you see right now: \""""+shared_dict["visual_description"]+"
                         result_l.append(token)
                         result_s="".join(result_l).strip()
                         shared_dict["text"]=result_s
-
                 print("LLM RESULT: ",result_s)
 
                 shared_dict["llm_finished"]=True
@@ -708,9 +409,5 @@ Description of what you see right now: \""""+shared_dict["visual_description"]+"
                     write_prompt=chat_log.encode('ascii', 'ignore').decode('ascii')
                     f.write(write_prompt+"\n\n\n\n\n")
                 print("\n")
-                print("TIME: ",time.time()-ts)
-
-
                 print("LLM Time: ",time.time()-ts)
 
-    print("Done")

@@ -1,9 +1,8 @@
 #camera thread
 def camera(shared_dict):
     # Open camera
-    cam=cv2.VideoCapture(1, cv2.CAP_MSMF) #cv2.CAP_DSHOW)
+    cam=cv2.VideoCapture(1, cv2.CAP_MSMF) 
 
-    # Fps print variables
     t_start=time.time()
     t_print=time.time()
 
@@ -44,24 +43,25 @@ def arduino_controls(shared_dict):
     # Arduino's response
     recv_string=""
 
-    # 0 is closed 1 is power open
+    # 0 is closed, 1 is power open
     mouth=0
 
-    # 0 is off 1 is red 2 is blue
+    # 0 is off, 1 is red, 2 is blue
     eye=2
 
     failed_prev=False
 
     t_loop=time.time()
-
     t_print=time.time()
 
-    x_micros=1500
-    prev_x_micros=1500
+    # Initialize position and velocity values
+    x_micros=shared_dict["x_micros"]
+    prev_x_micros=x_micros
     x_micro_vel=0
     prev_x_micro_vel=0
-    y_micros=1900
-    prev_y_micros=1900
+
+    y_micros=shared_dict["y_micros"]
+    prev_y_micros=y_micros
     y_micro_vel=0
     prev_y_micro_vel=0
 
@@ -69,16 +69,19 @@ def arduino_controls(shared_dict):
         # Get the values to send from the shared
         mouth=shared_dict["mouth"]
         eye=shared_dict["eye"]
-        #x_micros=shared_dict["x_micros"]
-        #y_micros=shared_dict["y_micros"]
         prev_x_micros=x_micros
         prev_y_micros=y_micros
 
+        # calculate how to move head based on the pixel values of the prediction
         x_micros, y_micros=calculate_writes(x_micros,y_micros,prev_x_micro_vel,prev_y_micro_vel,x_micro_vel,y_micro_vel,shared_dict["x_pos"],shared_dict["y_pos"],shared_dict["failed"],failed_prev,(time.time()-t_loop),shared_dict["exp"],shared_dict["em1"],shared_dict["em2"])
+
+        # Calculate the velocity of the head
         prev_x_micro_vel=x_micro_vel
         prev_y_micro_vel=y_micro_vel
         y_micro_vel=(y_micros-prev_y_micros)/(time.time()-t_loop)
         x_micro_vel=(x_micros-prev_x_micros)/(time.time()-t_loop)
+
+        # update the write values
         shared_dict["x_micros"]=int(x_micros)
         shared_dict["y_micros"]=int(y_micros)
         t_loop=time.time()
@@ -103,11 +106,6 @@ def arduino_controls(shared_dict):
 
 
 def calculate_writes(x_write_value,y_write_value,prev_x_micro_vel,prev_y_micro_vel,x_micro_vel,y_micro_vel,x_pos,y_pos,failed,failed_prev,loop_t,exp,em1,em2):
-    prev_x_write_value=x_write_value
-    prev_y_write_value=y_write_value
-
-    averaging_fraction=0.25
-
     if (x_pos!=None) and (y_pos!=None):
         x_dir_val=0
         y_dir_val=0
@@ -144,78 +142,10 @@ def calculate_writes(x_write_value,y_write_value,prev_x_micro_vel,prev_y_micro_v
                 y_write_value=710
             elif y_write_value>2290:
                 y_write_value=2290
-            
-            # #average and add velocity
-            # x_write_value=prev_x_micro_vel
-            # y_write_value=
 
             # Return the values to write
             return(int(x_write_value),int(y_write_value))
     return(int(x_write_value),int(y_write_value))
-
-# Not used currently
-def controls(shared_motion):
-    x_dir_val=0
-    x_write_value=1500
-    prev_x_write_value=1500
-
-    y_dir_val=0
-    y_write_value=1900
-    prev_y_write_value=1900
-
-    LOOP_T=0.025
-    spped_v=25
-    failed_prev=True
-
-
-    while True:
-        loop_t=time.time()
-
-        #do calculation
-        x_pos=shared_motion["x_pos"]
-        y_pos=shared_motion["y_pos"]
-        if (x_pos!=None) and (y_pos!=None):
-            # Get x dir
-            if x_pos>0:
-                x_dir_val=1
-            elif x_pos<0:
-                x_dir_val=-1
-
-            # Get y dir
-            if y_pos>0:
-                y_dir_val=1
-            elif y_pos<0:
-                y_dir_val=-1
-
-            # Set x bounds
-            if x_write_value<710:
-                x_write_value=710
-            elif x_write_value>2290:
-                x_write_value=2290
-
-            # Set y bounds
-            if y_write_value<710:
-                y_write_value=710
-            elif y_write_value>2290:
-                y_write_value=2290
-
-
-
-            if not shared_motion["failed"]:# or not failed_prev:
-                x_delta=((abs(x_pos/320)**shared_dict["exp"])*x_dir_val*1.76*LOOP_T*shared_dict["em1"])
-                x_write_value=(x_write_value-x_delta)
-
-                y_delta=((abs(y_pos/240)**shared_dict["exp"])*y_dir_val*1.76*LOOP_T*shared_dict["em2"])
-                y_write_value=(y_write_value-y_delta)
-                shared_dict["x_micros"]=x_write_value*0.25+prev_x_write_value*0.75
-                shared_dict["y_micros"]=y_write_value*0.25+prev_y_write_value*0.75
-            failed_prev=shared_motion["failed"]
-
-
-            #set loop speed
-            loop_d=(time.time()-loop_t)
-            if loop_d<LOOP_T:
-                time.sleep(LOOP_T-loop_d)  
 
 #motion functions
 def object_detection(shared_dict):
@@ -227,6 +157,7 @@ def object_detection(shared_dict):
     
     x_pos=0
     y_pos=0
+
     failed=False
     found_times=0
 
@@ -234,11 +165,7 @@ def object_detection(shared_dict):
     t_print=time.time()
     t_error=time.time()
     t_start=time.time()
-    t_result_prev=time.time()
 
-    x_write_value=0
-    x_person_real_vel=0
-    x_head_vel=0
 
     
     while True:
@@ -258,12 +185,11 @@ def object_detection(shared_dict):
                     results = model(frame)
 
                     try:
-                        # Put needed results on cpu
+                        # Put results on cpu
                         result_vals=results.pred[0][0][:].cpu().numpy()
 
                         # If confidence is too low, don't move
                         if result_vals[4]<acc_threshold:
-                            #throw exception to go to except block
                             raise Exception("Confidence too low")
 
                         # Calculate x and y position difference from center of frame
@@ -276,33 +202,21 @@ def object_detection(shared_dict):
                         fps=1/(time.time()-t_start)
                         fps=round(fps,2)
                         
-
                         # Debounce failed=False state
                         found_times+=1
                         if found_times>=2:
                             failed=False
 
-                        # Print values every second
+                        # Print detection information every second
                         if time.time()-t_print>1:
-                            print("ACC: ",result_vals[4], x_pos, y_pos, "FPS: ",fps, found_times, "XWRITE: ",x_write_value)# "XREALVEL: ",x_person_real_vel, "XHEADVEL: ",x_head_vel)
+                            print("ACC: ",result_vals[4], x_pos, y_pos, "FPS: ",fps, found_times)
                             t_print=time.time()
-
-                        # Share the values to write
-                        x_write_value=x_write_value-(x_pos*1.76)
-                        if x_write_value<700:
-                            x_write_value=700
-                        elif x_write_value>2300:
-                            x_write_value=2300
-                        shared_dict["x_write_value"]=x_write_value
-                        #shared_dict["x_micros"]=shared_dict["x_micros"]-(x_pos*1.76)#*time.time()-t_result_prev)
-                        t_result_prev=time.time()
                     
                     # Exit when keyboard interrupt
                     except KeyboardInterrupt:
                         print("Exiting program")
                         exit()
-                    
-                    # Print the first time it fails when someone was previously detected
+                    # Print the every second that it has failed to detect someone
                     except Exception as e:
                         if (time.time()-t_error)>1:
                             print(e," Line: ",e.__traceback__.tb_lineno)
@@ -310,15 +224,13 @@ def object_detection(shared_dict):
                         failed=True
                         found_times=0
                         
-                        
+                # Update detection status   
                 shared_dict["failed"]=failed
 
-                #show frame
+                #show frame with a red or green circle in the top left indicating detection status
                 if failed:
-                    #draw red box in top left corner
                     cv2.rectangle(frame,(0,0),(10,10),(0,0,255),-1)
                 else:
-                    #draw green box in top left corner
                     cv2.rectangle(frame,(0,0),(10,10),(0,255,0),-1)
                 cv2.imshow("frame",frame)
                 cv2.waitKey(1)
@@ -334,10 +246,8 @@ def object_detection(shared_dict):
 
 
 
-# New websocket connection
 def websocket_connection(shared_dict):
     import socket
-    import time
 
     #create socket
     hostname=socket.gethostname()
@@ -405,67 +315,12 @@ def websocket_connection(shared_dict):
 
 
 
-# Old Websocket connection
-def websocket_connection2(shared_motion):
-    import socket
-    import time
-
-    hostname=socket.gethostname()
-    port=1234
-
-    #create socket
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(2)
-
-    data_vals=[0,0]
-
-    t_print=time.time()
-
-    while True:
-        data_vals[0]+=1
-        data_vals[1]+=1
-        try:
-            if shared_motion["x_pos"]!=None:
-                if shared_motion["failed"]:
-                    data=str(shared_motion["x_write_value"])+","+str(shared_motion["y_write_value"])+",1"
-                else:
-                    data=str(shared_motion["x_write_value"])+","+str(shared_motion["y_write_value"])+",0"
-            else:
-                data="0,0,1"
-            s.sendall(data.encode())
-
-            recieved_data=s.recv(1024)
-            if (time.time()-t_print)>1:
-                print(data)
-                print(recieved_data)
-                t_print=time.time()
-        except Exception as e:
-            if e==KeyboardInterrupt:
-                print("Exiting program")
-                exit()
-            print(e)
-            while True:
-                try:
-                    s.close()
-                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    s.settimeout(2)
-                    time.sleep(1)
-                    s.connect((hostname, port))
-                    break
-                except Exception as e:
-                    #if keyboard interrupt, exit
-                    if e==KeyboardInterrupt:
-                        print("Exiting program")
-                        exit()
-                    else:
-                        print(e)
-                    print("Failed to reconnect")
-        time.sleep(0.02)
 
         
         
 
 if __name__=="__main__":
+    import time
     import threading
     import multiprocessing
     import time
@@ -478,23 +333,26 @@ if __name__=="__main__":
     shared_dict["failed"]=False
 
 
+    # Initialize head eye color and mouth position
     shared_dict["eye"]=1
     shared_dict["mouth"]=0
 
+    # Initialize the head position write value
     shared_dict["x_micros"]=1500
     shared_dict["y_micros"]=1900
 
-    shared_dict["x_write_value"]=2000
-    shared_dict["y_pos_write"]=1900
-    shared_dict["acc_threshold"]=0.7
+    # Set the camera offset values
     shared_dict["x_cam_offset"]=0
     shared_dict["y_cam_offset"]=0
     shared_dict["im_done"]=False
 
+    # Set movement characteristics
+    shared_dict["acc_threshold"]=0.7
     shared_dict["exp"]=1.1
     shared_dict["em1"]=0.5
     shared_dict["em2"]=0.5
 
+    # Start Thread to connect to the websocket
     socket_thread=threading.Thread(target=websocket_connection,args=(shared_dict,))
     socket_thread.start()
 
@@ -506,9 +364,6 @@ if __name__=="__main__":
 
     arduino_thread=threading.Thread(target=arduino_controls,args=(shared_dict,))
     arduino_thread.start()
-
-    controls_thread=threading.Thread(target=controls,args=(shared_dict,))
-    #controls_thread.start()
 
     while True:
         try:

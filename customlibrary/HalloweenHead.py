@@ -181,22 +181,9 @@ def tts_generator(shared_dict):
         if not shared_dict["tts_finished"]:
             shared_dict["tts_finished"]=False
             if llm_finished or (((len(ct)-so_far)>20) and (time.time()-t_start)>time_diff):
-                #if (shared_dict["last_token_size"]>3) or shared_dict["llm_finished"]:
                 pause_index=len(ct)-1
                 while (pause_index>so_far) and (ct[pause_index] not in ending_marks):
                     pause_index-=1
-                
-
-                #Create tts
-                # first_time=False
-                # if shared_dict["llm_finished"]:
-                #     ct=shared_dict["text"].split("You: ")[-1].split("</s>")[0]
-                # tts = gTTS(ct[so_far:])
-                #so_far=len(ct)
-
-                # llm_finished=shared_dict["llm_finished"]
-                # ct=shared_dict["text"].split("You: ")[-1].split("</s>")[0]
-
 
                 if len(ct)>0:
                     print("GTTS PRINT: ",so_far,fi,": ",ct[so_far:pause_index], " Pause index: ",pause_index," Len ct: ",len(ct))
@@ -232,12 +219,6 @@ def tts_player(shared_dict):
     import pygame
     import time
     pygame.init()
-
-    #create pygame window
-    #screen = pygame.display.set_mode((640,480))
-
-    #set window caption
-    #pygame.display.set_caption("Text to Speech")
 
     mic_active=True
 
