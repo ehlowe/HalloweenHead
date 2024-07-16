@@ -1,22 +1,24 @@
 env
-SECRET.txt
-
-old_code
-
 working_files/SECRET.txt
-working_files/crowdhuman_yolov5m.pt
-working_files/shi.jpg
-working_files/audio_files
-working_files/tts_files
-freq_plot_testing
-websocket_testing
-working_files/vision_description_image.jpg
-working_files/vision_description_image.jpeg
-working_files/vision_description_image.png
-working_files/prompt.yaml
-working_files/shi_test
-AI_Cam_Speed_Test.py
-cam_tester.py
-Camera_AI copy.py
+
+
+# working_files/crowdhuman_yolov5m.pt
+# working_files/shi.jpg
+
+# working_files/audio_files
+# working_files/tts_files
+
+# working_files/vision_description_image.jpg
+# working_files/vision_description_image.jpeg
+# working_files/vision_description_image.png
+# working_files/prompt.yaml
+# working_files/shi_test
+# working_files/pfp.jpg
+
+working_files
+
+
+working_files/settings.txt
+
 __pycache__
-working_files/pfp.jpg
+old_code
